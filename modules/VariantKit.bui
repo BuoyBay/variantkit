@@ -1,0 +1,127 @@
+Import Xojo
+Import collectionskit
+Import collectionskit.OrderedCollections
+
+''' Exact scalar key encoding; all integer widths share a numeric namespace.
+''' Signed zero is normalized. NaN keys reject. Object encoding is a hash bucket,
+''' not identity: the dictionary policy additionally checks reference identity.
+Public Function ExactVariantKey(key As Variant, caseSensitive As Boolean = False) As String
+    If key Is Nil Then Return "n:"
+    If key.IsNil() Then Return "n:"
+    If key.IsString() Then
+        Dim text As String = key.AsString().Value
+        If Not caseSensitive Then text = String.LCase(text)
+        Return "s:" + text
+    End If
+    If key.IsBoolean() Then Return "b:" + String.From(key.AsBoolean().Value)
+    If key.IsDouble() Then
+        Dim value As Double = key.AsDouble().Value
+        If value <> value Then Throw New InvalidArgumentException("NaN dictionary keys are unsupported")
+        If value = 0.0 Then value = 0.0
+        Dim bits As New MemoryBlock(8)
+        bits.DoubleValue(0) = value
+        Return "d:" + String.From(bits.UInt64Value(0))
+    End If
+    If key.IsObject() Then
+        Dim instance As Object = key.AsObject().Value
+        If instance Is Nil Then Return "n:"
+        Return "o:" + String.From(instance.Hash())
+    End If
+    If key.IsUInt64() Then Return "i:" + String.From(key.AsUInt64().Value)
+    If key.IsUInt32() Then Return "i:" + String.From(key.AsUInt32().Value)
+    If key.IsUInt16() Then Return "i:" + String.From(key.AsUInt16().Value)
+    If key.IsUInt8() Then Return "i:" + String.From(key.AsUInt8().Value)
+    If key.IsInt64() Then Return "i:" + String.From(key.AsInt64().Value)
+    If key.IsInt32() Then Return "i:" + String.From(key.AsInt32().Value)
+    If key.IsInt16() Then Return "i:" + String.From(key.AsInt16().Value)
+    If key.IsInt8() Then Return "i:" + String.From(key.AsInt8().Value)
+    If key.IsInteger() Then Return "i:" + String.From(key.AsInteger().Value)
+    Throw New InvalidArgumentException("Unsupported Variant key kind")
+End Function
+
+Private Class VariantKitKeyPolicy Implements CollectionKeyPolicy Of Variant
+    Private Property mSensitive As Boolean
+    Private Property mTextPolicy As ExactStringKeyPolicy
+    Public Sub Constructor(caseSensitive As Boolean)
+        mSensitive = caseSensitive
+        mTextPolicy = New ExactStringKeyPolicy()
+    End Sub
+    Public Function Hash(key As Variant) As Integer
+        Return mTextPolicy.Hash(ExactVariantKey(key, mSensitive))
+    End Function
+    Public Function Equal(a As Variant, b As Variant) As Boolean
+        Dim aKey As String = ExactVariantKey(a, mSensitive)
+        Dim bKey As String = ExactVariantKey(b, mSensitive)
+        If String.Compare(aKey, bKey, True) <> 0 Then Return False
+        If String.Left(aKey, 2) = "o:" Then
+            Return a.AsObject().Value Is b.AsObject().Value
+        End If
+        Return True
+    End Function
+End Class
+
+''' Insertion-ordered dictionary with exact numeric Variant keys and explicit casing.
+Public Class ExactVariantDictionary
+    Private Property mEntries As OrderedHashMap Of Variant, Variant
+    Private Property mSensitive As Boolean
+    Private Property mLimit As Integer
+    Public Sub Constructor(caseSensitive As Boolean = False, maxEntries As Integer = 100000)
+        mSensitive = caseSensitive
+        mLimit = maxEntries
+        mEntries = New OrderedHashMap Of Variant, Variant(New VariantKitKeyPolicy(caseSensitive), maxEntries)
+    End Sub
+    Public Property Count As Integer
+        Get
+            Return mEntries.Count
+        End Get
+    End Property
+    Public Property CaseSensitive As Boolean
+        Get
+            Return mSensitive
+        End Get
+    End Property
+    Public Function Set(key As Variant, value As Variant) As Boolean
+        Return mEntries.Set(key, value)
+    End Function
+    Public Function Get(key As Variant) As Optional Of Variant
+        Return mEntries.Get(key)
+    End Function
+    Public Function Lookup(key As Variant, fallback As Variant) As Variant
+        Dim found As Optional Of Variant = mEntries.Get(key)
+        If found.HasValue Then Return found.Value
+        Return fallback
+    End Function
+    Public Function ContainsKey(key As Variant) As Boolean
+        Return mEntries.ContainsKey(key)
+    End Function
+    Public Function Remove(key As Variant) As Boolean
+        Return mEntries.Remove(key)
+    End Function
+    Public Function Entries() As Array Of OrderedEntry Of Variant, Variant
+        Return mEntries.Entries()
+    End Function
+    Public Function Keys() As Array Of Variant
+        Dim keys As Array Of Variant = []
+        For Each entry As OrderedEntry Of Variant, Variant In mEntries.Entries()
+            Array.Append(keys, entry.Key)
+        Next
+        Return keys
+    End Function
+    Public Function Values() As Array Of Variant
+        Dim values As Array Of Variant = []
+        For Each entry As OrderedEntry Of Variant, Variant In mEntries.Entries()
+            Array.Append(values, entry.Value)
+        Next
+        Return values
+    End Function
+    Public Function Clone() As ExactVariantDictionary
+        Dim output As New ExactVariantDictionary(mSensitive, mLimit)
+        For Each entry As OrderedEntry Of Variant, Variant In mEntries.Entries()
+            output.Set(entry.Key, entry.Value)
+        Next
+        Return output
+    End Function
+    Public Sub Clear()
+        mEntries.Clear()
+    End Sub
+End Class
