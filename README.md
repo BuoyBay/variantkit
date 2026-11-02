@@ -16,7 +16,7 @@ From a Buoy consumer project with BPM installed:
 
 ```sh
 bpm add variantkit --git https://github.com/BuoyBay/variantkit.git --rev refs/heads/main
-```
+```basic
 
 BPM records the resolved commit in its lockfile. Keep that lockfile with the
 consumer project for reproducible installs.
@@ -24,7 +24,7 @@ BPM also resolves `collectionskit`.
 
 ## Example
 
-```buoy
+```basic
 Import Xojo
 Import variantkit
 Sub Main()
@@ -55,8 +55,6 @@ On your own machine, install Buoy and run:
 ```sh
 buoy ai init --both
 ```
-
-The generated agent files and editor settings stay local and are ignored by Git.
 
 ## Contributing
 

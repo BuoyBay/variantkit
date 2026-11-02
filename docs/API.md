@@ -58,5 +58,3 @@ names because the installed compiler does not completely enforce private-type
 visibility; callers must not depend on these helpers.
 
 ## Verify
-
-Maintainers run the private validation suite before release. See the repository README for public build instructions.
