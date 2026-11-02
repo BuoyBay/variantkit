@@ -1,4 +1,4 @@
-# Exact numeric Variant keys in ordered collections
+# Exact Variant dictionary keys
 
 `Import Xojo` and `Import variantkit` expose `ExactVariantDictionary`, an explicit
 adapter for the bundled Xojo shim's Variant. It does not replace Dictionary or
